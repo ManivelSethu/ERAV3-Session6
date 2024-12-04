@@ -10,12 +10,24 @@ import random
 import numpy as np
 from model import MNISTNet
 
+class Logger:
+    def __init__(self, log_dir='logs'):
+        os.makedirs(log_dir, exist_ok=True)
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.log_file = os.path.join(log_dir, f'training_log_{timestamp}.txt')
+        
+    def log(self, message, print_to_console=True):
+        if print_to_console:
+            print(message)
+        with open(self.log_file, 'a') as f:
+            f.write(message + '\n')
+
 # Configuration
 class Config:
     BATCH_SIZE = 128
     TEST_BATCH_SIZE = 1000
-    EPOCHS = 25  # Increased epochs
-    LEARNING_RATE = 0.002  # Slightly increased learning rate
+    EPOCHS = 10  #  epochs
+    LEARNING_RATE = 0.002  #  learning rate
     SEED = random.randint(1, 10000)  # Random seed
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     NUM_WORKERS = 0
@@ -29,6 +41,100 @@ def set_seed(seed):
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+
+def print_model_summary(model, logger):
+    summary = [
+        "\n" + "="*75,
+        "Model Summary",
+        "="*75,
+        "{:<30} {:<20} {:>10}".format("Layer (type)", "Output Shape", "Param #"),
+        "-"*75
+    ]
+    
+    total_params = 0
+    trainable_params = 0
+    
+    def get_layer_info(layer, input_size):
+        if isinstance(layer, (nn.Conv2d, nn.Linear, nn.BatchNorm2d)):
+            params = sum(p.numel() for p in layer.parameters())
+            trainable = sum(p.numel() for p in layer.parameters() if p.requires_grad)
+            return params, trainable
+        return 0, 0
+    
+    # Process Sequential blocks
+    def process_sequential(module, input_size):
+        nonlocal total_params, trainable_params
+        current_size = input_size
+        
+        for layer in module:
+            if isinstance(layer, nn.Conv2d):
+                out_channels = layer.out_channels
+                kernel_size = layer.kernel_size[0]
+                padding = layer.padding[0]
+                stride = layer.stride[0]
+                h = (current_size[2] + 2*padding - kernel_size) // stride + 1
+                w = (current_size[3] + 2*padding - kernel_size) // stride + 1
+                current_size = (current_size[0], out_channels, h, w)
+                params, trainable = get_layer_info(layer, current_size)
+                print("{:<30} {:<20} {:>10,d}".format(
+                    f"Conv2d-{out_channels}", str(list(current_size)), params))
+                total_params += params
+                trainable_params += trainable
+                
+            elif isinstance(layer, nn.BatchNorm2d):
+                params, trainable = get_layer_info(layer, current_size)
+                print("{:<30} {:<20} {:>10,d}".format(
+                    f"BatchNorm2d-{current_size[1]}", str(list(current_size)), params))
+                total_params += params
+                trainable_params += trainable
+                
+            elif isinstance(layer, nn.MaxPool2d):
+                h = current_size[2] // layer.kernel_size
+                w = current_size[3] // layer.kernel_size
+                current_size = (current_size[0], current_size[1], h, w)
+                print("{:<30} {:<20} {:>10,d}".format(
+                    "MaxPool2d", str(list(current_size)), 0))
+                
+            elif isinstance(layer, nn.Dropout):
+                print("{:<30} {:<20} {:>10,d}".format(
+                    f"Dropout-{layer.p}", str(list(current_size)), 0))
+                
+            elif isinstance(layer, nn.ReLU):
+                print("{:<30} {:<20} {:>10,d}".format(
+                    "ReLU", str(list(current_size)), 0))
+                
+            elif isinstance(layer, nn.AdaptiveAvgPool2d):
+                current_size = (current_size[0], current_size[1], 1, 1)
+                print("{:<30} {:<20} {:>10,d}".format(
+                    "AdaptiveAvgPool2d", str(list(current_size)), 0))
+    
+    # Start with input size
+    x = torch.randn(1, 1, 28, 28)
+    current_size = x.size()
+    
+    # Process main layers
+    process_sequential(model.conv1, current_size)
+    current_size = (current_size[0], 10, 12, 12)  # After conv1
+    process_sequential(model.conv2, current_size)
+    current_size = (current_size[0], 16, 4, 4)    # After conv2
+    process_sequential(model.conv3, current_size)
+    current_size = (current_size[0], 10, 1, 1)    # After conv3
+    
+    # Process final linear layer
+    params, trainable = get_layer_info(model.fc, (1, 10))
+    print("{:<30} {:<20} {:>10,d}".format(
+        "Linear", "(1, 10)", params))
+    total_params += params
+    trainable_params += trainable
+    
+    print("="*75)
+    print("{:<50} {:>10,d}".format("Total params", total_params))
+    print("{:<50} {:>10,d}".format("Trainable params", trainable_params))
+    print("{:<50} {:>10,d}".format("Non-trainable params", total_params - trainable_params))
+    print("="*75 + "\n")
+    
+    for line in summary:
+        logger.log(line)
 
 def train(model, device, train_loader, optimizer, epoch, criterion, scheduler=None):
     model.train()
@@ -64,8 +170,10 @@ def train(model, device, train_loader, optimizer, epoch, criterion, scheduler=No
     
     if scheduler is not None:
         scheduler.step()
+    
+    return running_loss/(batch_idx+1), 100.*correct/total
 
-def test(model, device, test_loader, criterion):
+def test(model, device, test_loader, criterion, logger):
     model.eval()
     test_loss = 0
     correct = 0
@@ -83,17 +191,33 @@ def test(model, device, test_loader, criterion):
     test_loss /= len(test_loader)
     accuracy = 100. * correct / total
     
-    print(f'\nTest set: Average loss: {test_loss:.4f}, '
-          f'Accuracy: {correct}/{total} ({accuracy:.2f}%)\n')
-    return accuracy
+    # Log validation results
+    logger.log("\n" + "="*50)
+    logger.log("Test/Validation Results:")
+    logger.log(f"Average loss: {test_loss:.4f}")
+    logger.log(f"Accuracy: {correct}/{total} ({accuracy:.2f}%)")
+    logger.log("="*50 + "\n")
+    
+    return accuracy, test_loss
 
 def main():
     config = Config()
+    logger = Logger()
+    
+    # Log training configuration
+    logger.log("\n" + "="*50)
+    logger.log("Training Configuration:")
+    logger.log(f"Random Seed: {config.SEED}")
+    logger.log(f"Batch Size: {config.BATCH_SIZE}")
+    logger.log(f"Learning Rate: {config.LEARNING_RATE}")
+    logger.log(f"Epochs: {config.EPOCHS}")
+    logger.log("="*50 + "\n")
+    
     print(f"Using random seed: {config.SEED}")
     set_seed(config.SEED)
     
     device = config.DEVICE
-    print(f"Using device: {device}")
+    logger.log(f"Using device: {device}")
 
     # Enhanced data augmentation
     train_transform = transforms.Compose([
@@ -131,25 +255,18 @@ def main():
     # Model setup
     model = MNISTNet().to(device)
     
-    # Print model information
-    print("\nModel Architecture:")
-    print(model)
-    print(f"\nTotal parameters: {model.get_num_parameters():,}")
-    print(f"Has Batch Normalization: {model.has_batch_norm()}")
-    print(f"Has Dropout: {model.has_dropout()}")
-    print(f"Has Fully Connected Layer: {model.has_fc_layer()}\n")
+    # Print detailed model summary
+    print_model_summary(model, logger)
+    
+    # Log basic model information
+    logger.log(f"Has Batch Normalization: {model.has_batch_norm()}")
+    logger.log(f"Has Dropout: {model.has_dropout()}")
+    logger.log(f"Has Fully Connected Layer: {model.has_fc_layer()}\n")
 
-    # Optimizer with weight decay
     optimizer = optim.Adam(model.parameters(), lr=config.LEARNING_RATE, weight_decay=1e-5)
-    
-    # Cosine annealing scheduler
     scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        optimizer,
-        T_0=5,  # Restart every 5 epochs
-        T_mult=1,
-        eta_min=1e-6
+        optimizer, T_0=5, T_mult=1, eta_min=1e-6
     )
-    
     criterion = nn.NLLLoss()
 
     # Training loop with patience for early stopping
@@ -157,28 +274,57 @@ def main():
     patience = 5
     patience_counter = 0
     
+    logger.log("\n" + "="*50)
+    logger.log("Starting Training")
+    logger.log("="*50)
+    
+    # Create a summary table for epoch results
+    logger.log("\nEpoch Results Summary:")
+    logger.log("{:<6} {:<12} {:<12} {:<12} {:<12}".format(
+        "Epoch", "Train Loss", "Train Acc", "Val Loss", "Val Acc"))
+    logger.log("-"*54)
+    
     for epoch in range(1, config.EPOCHS + 1):
-        train(model, device, train_loader, optimizer, epoch, criterion, scheduler)
-        accuracy = test(model, device, test_loader, criterion)
+        train_loss, train_acc = train(model, device, train_loader, optimizer, epoch, criterion, scheduler)
+        val_accuracy, val_loss = test(model, device, test_loader, criterion, logger)
         
-        if accuracy > best_accuracy:
-            best_accuracy = accuracy
+        # Log epoch summary
+        logger.log("{:<6d} {:<12.4f} {:<12.2f} {:<12.4f} {:<12.2f}".format(
+            epoch, train_loss, train_acc, val_loss, val_accuracy))
+        
+        if val_accuracy > best_accuracy:
+            best_accuracy = val_accuracy
             patience_counter = 0
-            # Save model with timestamp
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            model_path = os.path.join('models', f'mnist_model_{timestamp}_acc_{accuracy:.2f}.pt')
+            model_path = os.path.join('models', f'mnist_model_{timestamp}_acc_{val_accuracy:.2f}.pt')
             os.makedirs('models', exist_ok=True)
             torch.save(model.state_dict(), model_path)
-            print(f"Model saved to {model_path}")
+            logger.log(f"\nNew best model saved!")
+            logger.log(f"Path: {model_path}")
+            logger.log(f"Best accuracy so far: {best_accuracy:.2f}%\n")
             
-            if accuracy >= 99.4:
-                print(f"\nReached target accuracy of 99.4%! Training completed early at epoch {epoch}")
+            if val_accuracy >= 99.4:
+                logger.log("\n" + "="*50)
+                logger.log(f"Target accuracy of 99.4% reached!")
+                logger.log(f"Final test accuracy: {val_accuracy:.2f}%")
+                logger.log(f"Training completed at epoch {epoch}")
+                logger.log("="*50 + "\n")
                 break
         else:
             patience_counter += 1
             if patience_counter >= patience:
-                print(f"\nNo improvement for {patience} epochs. Early stopping at epoch {epoch}")
+                logger.log("\n" + "="*50)
+                logger.log(f"No improvement for {patience} epochs.")
+                logger.log(f"Early stopping at epoch {epoch}")
+                logger.log(f"Best accuracy achieved: {best_accuracy:.2f}%")
+                logger.log("="*50 + "\n")
                 break
+    
+    logger.log("\n" + "="*50)
+    logger.log("Training Summary:")
+    logger.log(f"Best accuracy achieved: {best_accuracy:.2f}%")
+    logger.log(f"Random seed used: {config.SEED}")
+    logger.log("="*50 + "\n")
 
 if __name__ == '__main__':
     main() 
