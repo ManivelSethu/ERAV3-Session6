@@ -17,10 +17,11 @@ A lightweight Convolutional Neural Network for MNIST digit classification with a
 ```
 
 ## Test Logs
-**Total parameters: 15,334**  |
-Has Batch Normalization: **True**  | 
-Has Dropout: **True**  |
-Has Fully Connected Layer: **True**  |
+```bash
+Total parameters: 15,334  
+Has Batch Normalization: True 
+Has Dropout: True
+Has Fully Connected Layer: True
 
 Epoch 1: 100%|████████████████████████████████████████████████| 469/469 [02:31<00:00,  3.10it/s, Loss=0.5379, Acc=82.73%] 
 Test set: Average loss: 0.0546, Accuracy: 9842/10000 (98.42%)
@@ -61,6 +62,7 @@ Test set: Average loss: 0.0161, **Accuracy: 9948/10000 (99.48%)**
 Model saved to models\mnist_model_20241204_170609_acc_99.48.pt
 
 Reached target accuracy of 99.4%! Training completed early at **epoch 10**
+```
 
 ## Features
 - Efficient CNN architecture (<20K parameters)
