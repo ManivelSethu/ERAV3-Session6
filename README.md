@@ -1,3 +1,5 @@
+[![ML Model CI/CD Pipeline](https://github.com/ManivelSethu/ERAV3-Session6/actions/workflows/ml-pipeline.yml/badge.svg)](https://github.com/ManivelSethu/ERAV3-Session6/actions/workflows/ml-pipeline.yml)
+
 # MNIST CNN with CI/CD Pipeline
 
 A lightweight Convolutional Neural Network for MNIST digit classification with automated testing and CI/CD pipeline.
