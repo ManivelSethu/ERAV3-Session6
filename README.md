@@ -18,7 +18,50 @@ A lightweight Convolutional Neural Network for MNIST digit classification with a
 
 ## Test Logs
 ```bash
-Total parameters: 15,334  
+Using device: cpu
+
+Model Architecture:
+MNISTNet(
+  (conv1): Sequential(
+    (0): Conv2d(1, 20, kernel_size=(3, 3), stride=(1, 1))
+    (1): ReLU()
+    (2): BatchNorm2d(20, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (3): Dropout(p=0.1, inplace=False)
+    (4): Conv2d(20, 20, kernel_size=(3, 3), stride=(1, 1))
+    (5): ReLU()
+    (6): BatchNorm2d(20, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (7): Dropout(p=0.1, inplace=False)
+    (8): Conv2d(20, 10, kernel_size=(1, 1), stride=(1, 1))
+    (9): ReLU()
+    (10): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+  )
+  (conv2): Sequential(
+    (0): Conv2d(10, 16, kernel_size=(3, 3), stride=(1, 1))
+    (1): ReLU()
+    (2): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (3): Dropout(p=0.1, inplace=False)
+    (4): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1))
+    (5): ReLU()
+    (6): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (7): Dropout(p=0.1, inplace=False)
+    (8): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1))
+    (9): ReLU()
+    (10): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (11): Dropout(p=0.1, inplace=False)
+    (12): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1))
+    (13): ReLU()
+    (14): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (15): Dropout(p=0.1, inplace=False)
+  )
+  (conv3): Sequential(
+    (0): Conv2d(16, 10, kernel_size=(4, 4), stride=(1, 1))
+    (1): ReLU()
+    (2): AdaptiveAvgPool2d(output_size=1)
+  )
+  (fc): Linear(in_features=10, out_features=10, bias=True)
+)
+
+Total parameters: **15,334 ** 
 Has Batch Normalization: True 
 Has Dropout: True
 Has Fully Connected Layer: True
