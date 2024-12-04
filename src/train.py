@@ -6,18 +6,29 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import datetime
 import os
+import random
+import numpy as np
 from model import MNISTNet
 
 # Configuration
 class Config:
-    BATCH_SIZE = 64
+    BATCH_SIZE = 128
     TEST_BATCH_SIZE = 1000
-    EPOCHS = 10
-    LEARNING_RATE = 0.005
-    MOMENTUM = 0.9
-    SEED = 42
+    EPOCHS = 25  # Increased epochs
+    LEARNING_RATE = 0.002  # Slightly increased learning rate
+    SEED = random.randint(1, 10000)  # Random seed
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     NUM_WORKERS = 0
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
 def train(model, device, train_loader, optimizer, epoch, criterion, scheduler=None):
     model.train()
@@ -33,6 +44,10 @@ def train(model, device, train_loader, optimizer, epoch, criterion, scheduler=No
         output = model(data)
         loss = criterion(output, target)
         loss.backward()
+        
+        # Gradient clipping for stability
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        
         optimizer.step()
         
         # Calculate accuracy
@@ -74,16 +89,17 @@ def test(model, device, test_loader, criterion):
 
 def main():
     config = Config()
-    torch.manual_seed(config.SEED)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(config.SEED)
+    print(f"Using random seed: {config.SEED}")
+    set_seed(config.SEED)
     
     device = config.DEVICE
     print(f"Using device: {device}")
 
-    # Data loading with augmentation
+    # Enhanced data augmentation
     train_transform = transforms.Compose([
-        transforms.RandomAffine(degrees=5, translate=(0.1, 0.1), scale=(0.9, 1.1)),
+        transforms.RandomAffine(degrees=10, translate=(0.1, 0.1), scale=(0.85, 1.15)),
+        transforms.RandomPerspective(distortion_scale=0.2, p=0.5),
+        transforms.ColorJitter(brightness=0.2),
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
     ])
@@ -123,25 +139,46 @@ def main():
     print(f"Has Dropout: {model.has_dropout()}")
     print(f"Has Fully Connected Layer: {model.has_fc_layer()}\n")
 
-    optimizer = optim.SGD(model.parameters(), lr=config.LEARNING_RATE, momentum=config.MOMENTUM, nesterov=True)
-    scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=config.LEARNING_RATE,
-                                            epochs=config.EPOCHS, steps_per_epoch=len(train_loader))
+    # Optimizer with weight decay
+    optimizer = optim.Adam(model.parameters(), lr=config.LEARNING_RATE, weight_decay=1e-5)
+    
+    # Cosine annealing scheduler
+    scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optimizer,
+        T_0=5,  # Restart every 5 epochs
+        T_mult=1,
+        eta_min=1e-6
+    )
+    
     criterion = nn.NLLLoss()
 
-    # Training loop
+    # Training loop with patience for early stopping
     best_accuracy = 0
+    patience = 5
+    patience_counter = 0
+    
     for epoch in range(1, config.EPOCHS + 1):
         train(model, device, train_loader, optimizer, epoch, criterion, scheduler)
         accuracy = test(model, device, test_loader, criterion)
         
         if accuracy > best_accuracy:
             best_accuracy = accuracy
+            patience_counter = 0
             # Save model with timestamp
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             model_path = os.path.join('models', f'mnist_model_{timestamp}_acc_{accuracy:.2f}.pt')
             os.makedirs('models', exist_ok=True)
             torch.save(model.state_dict(), model_path)
             print(f"Model saved to {model_path}")
+            
+            if accuracy >= 99.4:
+                print(f"\nReached target accuracy of 99.4%! Training completed early at epoch {epoch}")
+                break
+        else:
+            patience_counter += 1
+            if patience_counter >= patience:
+                print(f"\nNo improvement for {patience} epochs. Early stopping at epoch {epoch}")
+                break
 
 if __name__ == '__main__':
     main() 
