@@ -18,48 +18,45 @@ A lightweight Convolutional Neural Network for MNIST digit classification with a
 
 ## Test Logs
 ```bash
+
 Using device: cpu
 
-Model Architecture:
-MNISTNet(
-  (conv1): Sequential(
-    (0): Conv2d(1, 20, kernel_size=(3, 3), stride=(1, 1))
-    (1): ReLU()
-    (2): BatchNorm2d(20, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (3): Dropout(p=0.1, inplace=False)
-    (4): Conv2d(20, 20, kernel_size=(3, 3), stride=(1, 1))
-    (5): ReLU()
-    (6): BatchNorm2d(20, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (7): Dropout(p=0.1, inplace=False)
-    (8): Conv2d(20, 10, kernel_size=(1, 1), stride=(1, 1))
-    (9): ReLU()
-    (10): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
-  )
-  (conv2): Sequential(
-    (0): Conv2d(10, 16, kernel_size=(3, 3), stride=(1, 1))
-    (1): ReLU()
-    (2): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (3): Dropout(p=0.1, inplace=False)
-    (4): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1))
-    (5): ReLU()
-    (6): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (7): Dropout(p=0.1, inplace=False)
-    (8): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1))
-    (9): ReLU()
-    (10): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (11): Dropout(p=0.1, inplace=False)
-    (12): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1))
-    (13): ReLU()
-    (14): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (15): Dropout(p=0.1, inplace=False)
-  )
-  (conv3): Sequential(
-    (0): Conv2d(16, 10, kernel_size=(4, 4), stride=(1, 1))
-    (1): ReLU()
-    (2): AdaptiveAvgPool2d(output_size=1)
-  )
-  (fc): Linear(in_features=10, out_features=10, bias=True)
-)
+Conv2d-20                      [1, 20, 26, 26]             200
+ReLU                           [1, 20, 26, 26]               0
+BatchNorm2d-20                 [1, 20, 26, 26]              40
+Dropout-0.1                    [1, 20, 26, 26]               0
+Conv2d-20                      [1, 20, 24, 24]           3,620
+ReLU                           [1, 20, 24, 24]               0
+BatchNorm2d-20                 [1, 20, 24, 24]              40
+Dropout-0.1                    [1, 20, 24, 24]               0
+Conv2d-10                      [1, 10, 24, 24]             210
+ReLU                           [1, 10, 24, 24]               0
+MaxPool2d                      [1, 10, 12, 12]               0
+Conv2d-16                      [1, 16, 10, 10]           1,456
+ReLU                           [1, 16, 10, 10]               0
+BatchNorm2d-16                 [1, 16, 10, 10]              32
+Dropout-0.1                    [1, 16, 10, 10]               0
+Conv2d-16                      [1, 16, 8, 8]             2,320
+ReLU                           [1, 16, 8, 8]                 0
+BatchNorm2d-16                 [1, 16, 8, 8]                32
+Dropout-0.1                    [1, 16, 8, 8]                 0
+Conv2d-16                      [1, 16, 6, 6]             2,320
+ReLU                           [1, 16, 6, 6]                 0
+BatchNorm2d-16                 [1, 16, 6, 6]                32
+Dropout-0.1                    [1, 16, 6, 6]                 0
+Conv2d-16                      [1, 16, 4, 4]             2,320
+ReLU                           [1, 16, 4, 4]                 0
+BatchNorm2d-16                 [1, 16, 4, 4]                32
+Dropout-0.1                    [1, 16, 4, 4]                 0
+Conv2d-10                      [1, 10, 1, 1]             2,570
+ReLU                           [1, 10, 1, 1]                 0
+AdaptiveAvgPool2d              [1, 10, 1, 1]                 0
+Linear                         (1, 10)                     110
+===========================================================================
+Total params                                           15,334
+Trainable params                                       15,334
+Non-trainable params                                        0
+===========================================================================
 
 Total parameters: **15,334 ** 
 Has Batch Normalization: True 
