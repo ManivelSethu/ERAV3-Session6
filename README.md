@@ -17,10 +17,10 @@ A lightweight Convolutional Neural Network for MNIST digit classification with a
 ```
 
 ## Test Logs
-Total parameters: 15,334
-Has Batch Normalization: True
-Has Dropout: True
-Has Fully Connected Layer: True
+**Total parameters: 15,334**  |
+Has Batch Normalization: **True**  | 
+Has Dropout: **True**  |
+Has Fully Connected Layer: **True**  |
 
 Epoch 1: 100%|████████████████████████████████████████████████| 469/469 [02:31<00:00,  3.10it/s, Loss=0.5379, Acc=82.73%] 
 Test set: Average loss: 0.0546, Accuracy: 9842/10000 (98.42%)
