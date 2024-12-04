@@ -32,10 +32,13 @@ def test_model_architecture():
 
 def test_model_forward():
     model = MNISTNet()
-    x = torch.randn(1, 1, 28, 28)
+    model.eval()  # Set to evaluation mode
+    batch_size = 4  # Use batch size > 1
+    x = torch.randn(batch_size, 1, 28, 28)
     try:
-        output = model(x)
-        assert output.shape == (1, 10)
+        with torch.no_grad():  # Disable gradient computation
+            output = model(x)
+        assert output.shape == (batch_size, 10)
         print("Forward pass test passed")
     except Exception as e:
         pytest.fail(f"Forward pass failed with error: {str(e)}")
